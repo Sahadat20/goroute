@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	goroute "github.com/Sahadat20/goroute"
 )
@@ -15,6 +16,7 @@ type User struct {
 
 // in-memory mock database (for demo only)
 var userDB = make(map[string]User)
+var idCounter = 1
 
 // welcomeHandler handles root endpoint
 func welcomeHandler(c *goroute.Context) {
@@ -40,53 +42,70 @@ func createNewUser(c *goroute.Context) {
 		return
 	}
 
-	// store user (static key for demo)
-	userDB["1"] = newUser
+	// Generate a new ID as a string
+	id := strconv.Itoa(idCounter)
+	idCounter++
 
+	userDB[id] = newUser
 	c.JSON(http.StatusCreated, map[string]string{
+		"id":      id,
 		"message": "User created successfully",
 	})
 }
 
-// getUser returns the stored user
-func getUser(c *goroute.Context) {
-	user, exists := userDB["1"]
-
-	if !exists {
-		c.String(http.StatusNotFound, "User not found")
+// getUsers returns the stored all user
+func getUsers(c *goroute.Context) {
+	// The framework's JSON helper automatically encodes the entire map
+	if len(userDB) == 0 {
+		// Return an empty object or message if no users exist yet
+		c.JSON(http.StatusOK, map[string]string{"message": "No users found"})
 		return
 	}
+	c.JSON(http.StatusOK, userDB)
+}
 
-	c.JSON(http.StatusOK, user)
+// getUser returns the stored user
+func getUser(c *goroute.Context) {
+	id := c.Param("id") // Extract ID from the URL
+
+	if user, exists := userDB[id]; exists {
+		c.JSON(http.StatusOK, user)
+	} else {
+		c.String(http.StatusNotFound, "User not found")
+	}
 }
 
 // updateUser updates existing user data
 func updateUser(c *goroute.Context) {
-	if _, exists := userDB["1"]; !exists {
+	id := c.Param("id") // Extract ID from the URL
+
+	// Ensure the user exists before updating
+	if _, exists := userDB[id]; !exists {
 		c.String(http.StatusNotFound, "User not found")
 		return
 	}
 
 	var updatedUser User
-
-	// bind request body
 	if err := c.BindJSON(&updatedUser); err != nil {
 		c.String(http.StatusBadRequest, "Invalid JSON data")
 		return
 	}
 
-	userDB["1"] = updatedUser
-
-	c.JSON(http.StatusOK, map[string]string{
-		"message": "User updated successfully",
-	})
+	// Overwrite the existing data at this specific ID
+	userDB[id] = updatedUser
+	c.JSON(http.StatusOK, map[string]string{"message": "User " + id + " updated"})
 }
 
 // deleteUser removes user from memory
 func deleteUser(c *goroute.Context) {
-	delete(userDB, "1")
+	id := c.Param("id") // Extract ID from the URL
 
-	c.String(http.StatusOK, "User deleted successfully")
+	if _, exists := userDB[id]; exists {
+		delete(userDB, id)
+		c.String(http.StatusOK, "User "+id+" deleted")
+	} else {
+		c.String(http.StatusNotFound, "User not found")
+	}
 }
 
 func main() {
@@ -99,10 +118,15 @@ func main() {
 
 	// CRUD routes (demo API)
 	app.POST("/user", createNewUser)
-	app.GET("/user", getUser)
-	app.PUT("/user", updateUser)
-	app.DELETE("/user", deleteUser)
-
+	app.GET("/users", getUsers)
+	app.GET("/user/:id", getUser)
+	app.PUT("/user/:id", updateUser)
+	app.DELETE("/user/:id", deleteUser)
+	// (Optional) Keep the wildcard route from earlier to show multiple features coexisting
+	app.GET("/static/*filepath", func(c *goroute.Context) {
+		file := c.Param("filepath")
+		c.String(http.StatusOK, "Simulating serving file: "+file)
+	})
 	// start server
 	addr := ":8081"
 
