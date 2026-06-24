@@ -10,8 +10,13 @@ type Context struct {
 	Req    *http.Request
 	Path   string
 	Method string
-	//
+	//value extracted from dynamic route
 	Params map[string]string
+
+	// The execution chain and state pointer
+	handlers []RouteHandler
+	index    int8 //tracks which handler in the chain are currently executing
+
 }
 
 func newContext(w http.ResponseWriter, r *http.Request) *Context {
@@ -20,7 +25,18 @@ func newContext(w http.ResponseWriter, r *http.Request) *Context {
 		Req:    r,
 		Path:   r.URL.Path,
 		Method: r.Method,
+		index:  -1, // Start at -1, so the first Next() call increments it to 0
 	}
+}
+
+// Next executes the pending handlers in the chain inside the calling handler.
+func (c *Context) Next() {
+	c.index++
+	for c.index < int8(len(c.handlers)) {
+		c.handlers[c.index](c)
+		c.index++
+	}
+
 }
 
 // Param retrieves a dynamic path parameter by its name

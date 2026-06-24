@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	goroute "github.com/Sahadat20/goroute"
 )
@@ -108,10 +109,29 @@ func deleteUser(c *goroute.Context) {
 	}
 }
 
+// Logger is a custome global middleware
+
+func Logger() goroute.RouteHandler {
+	return func(c *goroute.Context) {
+		// 1. Pre-Procesing
+		t := time.Now()
+		fmt.Printf("[START] request incoming: %s %s\n", c.Method, c.Path)
+		// 2. pass control to the next middleware or handler
+		c.Next()
+
+		// 3. post processing (execute after the entire request is handled)
+		latency := time.Since(t)
+		fmt.Printf("[END] request completed: %s %s in %v\n", c.Method, c.Path, latency)
+
+	}
+}
+
 func main() {
 	// create new GoRoute instance
 	app := goroute.New()
 
+	// register global middleware using .Use()
+	app.Use(Logger())
 	// basic routes
 	app.GET("/", welcomeHandler)
 	app.GET("/api/info", infoHandler)

@@ -8,11 +8,17 @@ import (
 type RouteHandler func(c *Context)
 
 type Engine struct {
-	router *router
+	router      *router
+	middlewares []RouteHandler
 }
 
 func New() *Engine {
 	return &Engine{router: newRouter()}
+}
+
+// add global middlewares to the framework instance
+func (e *Engine) Use(middlewares ...RouteHandler) {
+	e.middlewares = append(e.middlewares, middlewares...)
 }
 
 func (e *Engine) addRoute(method string, pattern string, handler RouteHandler) {
@@ -32,21 +38,32 @@ func (e *Engine) DELETE(pattern string, handler RouteHandler) {
 	e.addRoute("DELETE", pattern, handler)
 }
 func (e *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// 1. Ask the router if a matching node exists for this Method and Path
+
+	// 1. Create the briefcase
+	c := newContext(w, r)
+
+	// 2. Pre-load the global middlewares into the execution chain
+	c.handlers = append(c.handlers, e.middlewares...)
+
+	// 3. find a specific route logic
 	node, params := e.router.getRoute(r.Method, r.URL.Path)
 
 	if node != nil {
-		// 2. Inject the extracted dynamic parameters into the context
-		c := newContext(w, r)
+		// 4. Inject the extracted dynamic parameters into the context
 		c.Params = params
 
-		// 3. Execute the handler mapped to the discovered pattern
+		// 3. append the core handler to the end of the chain
 		key := r.Method + "-" + node.pattern
-		e.router.handlers[key](c)
+		c.handlers = append(c.handlers, e.router.handlers[key])
 	} else {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintf(w, "404 NOT FOUND: %s\n", r.URL)
+		// Append a 404 handler to the chain if route is missing
+		c.handlers = append(c.handlers, func(c *Context) {
+			c.String(http.StatusNotFound, "404 NOT FOUND")
+		})
 	}
+
+	// 5. Kick off the execution chain
+	c.Next()
 }
 func (e *Engine) Run(addr string) error {
 	fmt.Printf("GoExpress is running on %s...\n", addr)
