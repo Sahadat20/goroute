@@ -39,6 +39,12 @@ func (c *Context) Next() {
 
 }
 
+// Abort flags the framework to immediately stop driving the execution chain.
+func (c *Context) Abort() {
+	// Overwrite the index pointer to the maximum length to break the loop condition
+	c.index = int8(len(c.handlers))
+}
+
 // Param retrieves a dynamic path parameter by its name
 func (c *Context) Param(key string) string {
 	return c.Params[key]
