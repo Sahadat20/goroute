@@ -48,3 +48,6 @@ func (group *RouterGroup) PATCH(pattern string, handler RouteHandler) {
 func (group *RouterGroup) DELETE(pattern string, handler RouteHandler) {
 	group.addRoute("DELETE", pattern, handler)
 }
+func (group *RouterGroup) OPTIONS(pattern string, handler RouteHandler) {
+	group.addRoute("OPTIONS", pattern, handler)
+}

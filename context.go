@@ -76,3 +76,8 @@ func (c *Context) BindJSON(obj interface{}) error {
 	defer c.Req.Body.Close()
 	return decoder.Decode(obj)
 }
+
+// SetHeader sets a specific header key-value pair in the HTTP response.
+func (c *Context) SetHeader(key, value string) {
+	c.Writer.Header().Set(key, value)
+}

@@ -45,6 +45,15 @@ func main() {
 
 	// Apply Global Middleware
 	g.Use(GlobalLogger())
+	g.Use(goroute.CORS()) //Inject CORS middleware globally
+
+	// THE WILDCARD PREFLIGHT CATCHER
+	// Any OPTIONS request will match this wildcard. The request will flow through:
+	// [GlobalLogger -> CORS -> Empty Handler]
+	// But because CORS calls c.Abort(), the empty handler is safely ignored!
+	g.OPTIONS("/*cors", func(c *goroute.Context) {
+		// Intentionally left blank. c.Abort() in the CORS middleware stops execution before reaching here.
+	})
 
 	// ==========================================
 	// GROUP 1: /admin
