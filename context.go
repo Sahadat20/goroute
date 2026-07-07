@@ -15,7 +15,8 @@ type Context struct {
 
 	// The execution chain and state pointer
 	handlers []RouteHandler
-	index    int8 //tracks which handler in the chain are currently executing
+	index    int8                   //tracks which handler in the chain are currently executing
+	Keys     map[string]interface{} // local storage for request-scoped context variables
 
 }
 
@@ -27,6 +28,24 @@ func newContext(w http.ResponseWriter, r *http.Request) *Context {
 		Method: r.Method,
 		index:  -1, // Start at -1, so the first Next() call increments it to 0
 	}
+}
+
+// set attaches a key-value pair to the current request lifecycle context
+
+func (c *Context) Set(key string, value interface{}) {
+	if c.Keys == nil {
+		c.Keys = make(map[string]interface{})
+	}
+	c.Keys[key] = value
+}
+
+// Get retrieves a key-value pair from the context, returning false if missing
+func (c *Context) Get(key string) (value interface{}, exists bool) {
+	if c.Keys == nil {
+		return nil, false
+	}
+	value, exists = c.Keys[key]
+	return
 }
 
 // Next executes the pending handlers in the chain inside the calling handler.

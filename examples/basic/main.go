@@ -3,9 +3,12 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	goroute "github.com/Sahadat20/goroute"
 )
+
+const SecretKey = "this-is-test-secret"
 
 // Global Middleware
 func GlobalLogger() goroute.RouteHandler {
@@ -58,8 +61,18 @@ func main() {
 	// ==========================================
 	// GROUP 1: /admin
 	// ==========================================
+	// UNPROTECTED ENDPOINT: Token Generation Factory
+	g.POST("/login", func(c *goroute.Context) {
+		// Mock login validation assuming user passed parameters successfully
+		token, err := goroute.GenerateJWT("pro_programmer", SecretKey, 15*time.Minute)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to forge token"})
+			return
+		}
+		c.JSON(http.StatusOK, map[string]string{"token": token})
+	})
 	admin := g.Group("/admin")
-	admin.Use(AdminGuard())
+	admin.Use(goroute.JWTAuth(SecretKey))
 	{
 		// Resolves to: PUT /admin/users/:id
 		admin.PUT("/users/:id", func(c *goroute.Context) {
