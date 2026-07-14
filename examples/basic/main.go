@@ -13,7 +13,7 @@ const SecretKey = "this-is-test-secret"
 // Global Middleware
 func GlobalLogger() goroute.RouteHandler {
 	return func(c *goroute.Context) {
-		fmt.Printf("[GLOBAL OMNIPRESENT LOG] Intercepted: %s %s\n", c.Method, c.Path)
+		fmt.Printf("[GLOBAL LOG] Intercepted: %s %s\n", c.Method, c.Path)
 		c.Next()
 	}
 }
@@ -108,5 +108,26 @@ func main() {
 		})
 	}
 
+	// ProductPayload defines the expected JSON structure and its machine rules
+	type ProductPayload struct {
+		Name  string  `json:"name" validate:"required"`
+		Price float64 `json:"price" validate:"required"`
+		SKU   string  `json:"sku"` // Optional
+	}
+	g.POST("/api/products", func(c *goroute.Context) {
+		var payload ProductPayload
+
+		// 1. One line to map the memory and validate the structural rules
+		if err := c.BindJSON(&payload); err != nil {
+			c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+
+		// 2. If we reach here, the struct is fully populated and 100% safe to use
+		c.JSON(http.StatusCreated, map[string]interface{}{
+			"message": "Product safely bound to memory",
+			"product": payload.Name,
+		})
+	})
 	g.Run(":8080")
 }

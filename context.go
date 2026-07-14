@@ -93,7 +93,10 @@ func (c *Context) JSON(code int, obj interface{}) {
 func (c *Context) BindJSON(obj interface{}) error {
 	decoder := json.NewDecoder(c.Req.Body)
 	defer c.Req.Body.Close()
-	return decoder.Decode(obj)
+	if err := decoder.Decode(obj); err != nil {
+		return err
+	}
+	return ValidateStruct(obj)
 }
 
 // SetHeader sets a specific header key-value pair in the HTTP response.
