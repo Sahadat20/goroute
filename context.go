@@ -14,19 +14,20 @@ type Context struct {
 	Params map[string]string
 
 	// The execution chain and state pointer
-	handlers []RouteHandler
-	index    int8                   //tracks which handler in the chain are currently executing
-	Keys     map[string]interface{} // local storage for request-scoped context variables
-
+	handlers   []RouteHandler
+	index      int8                   //tracks which handler in the chain are currently executing
+	Keys       map[string]interface{} // local storage for request-scoped context variables
+	StatusCode int                    //Track the final status code
 }
 
 func newContext(w http.ResponseWriter, r *http.Request) *Context {
 	return &Context{
-		Writer: w,
-		Req:    r,
-		Path:   r.URL.Path,
-		Method: r.Method,
-		index:  -1, // Start at -1, so the first Next() call increments it to 0
+		Writer:     w,
+		Req:        r,
+		Path:       r.URL.Path,
+		Method:     r.Method,
+		index:      -1, // Start at -1, so the first Next() call increments it to 0
+		StatusCode: 200,
 	}
 }
 
@@ -74,11 +75,12 @@ func (c *Context) String(code int, text string) {
 	c.Writer.Header().Set("Content-Type", "text/plain")
 	c.Writer.WriteHeader(code)
 	c.Writer.Write([]byte(text))
-
+	c.StatusCode = code
 }
 
 // JSON sends a formatted JSON response with a status code
 func (c *Context) JSON(code int, obj interface{}) {
+	c.StatusCode = code
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.Writer.WriteHeader(code)
 

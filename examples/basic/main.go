@@ -10,14 +10,6 @@ import (
 
 const SecretKey = "this-is-test-secret"
 
-// Global Middleware
-func GlobalLogger() goroute.RouteHandler {
-	return func(c *goroute.Context) {
-		fmt.Printf("[GLOBAL LOG] Intercepted: %s %s\n", c.Method, c.Path)
-		c.Next()
-	}
-}
-
 // Middleware for /admin Group
 func AdminGuard() goroute.RouteHandler {
 	return func(c *goroute.Context) {
@@ -46,8 +38,10 @@ func ContextualTracker() goroute.RouteHandler {
 func main() {
 	g := goroute.New()
 
+	// attach recovry first
+	g.Use(goroute.Recovery())
 	// Apply Global Middleware
-	g.Use(GlobalLogger())
+	g.Use(goroute.Logger())
 	g.Use(goroute.CORS()) //Inject CORS middleware globally
 
 	// THE WILDCARD PREFLIGHT CATCHER
@@ -58,6 +52,10 @@ func main() {
 		// Intentionally left blank. c.Abort() in the CORS middleware stops execution before reaching here.
 	})
 
+	g.GET("/dangerous", func(c *goroute.Context) {
+		var pointer *int // 1. Allocates a pointer, defaults to nil (0x0)
+		*pointer = 10    // 2. Attempts to write to memory address 0x0
+	})
 	// ==========================================
 	// GROUP 1: /admin
 	// ==========================================
